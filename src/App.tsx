@@ -2,17 +2,15 @@ import React, { useEffect, useState } from 'react';
 import './App.css';
 import axios from 'axios'
 import { extractAccessTokenFromLocationHash } from './spotifyUtils';
+import SpotifyWebApi from 'spotify-web-api-js';
 function App() {
 
-  interface Playlist {
-    name: string;
-  }
   interface Artist {
     name: string;
   }
 
   const [accessToken, setAccessToken] = useState<null | string>(null);
-  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [playlists, setPlaylists] = useState<SpotifyApi.PlaylistObjectSimplified[]>([]);
   const [followedArtists, setFollowedArtists] = useState<Artist[]>([]);
   const [counter, setCounter] = useState(0);
 
@@ -22,7 +20,6 @@ function App() {
     if (retrievedAccessToken) {
       console.log(retrievedAccessToken)
       setAccessToken(retrievedAccessToken);
-      //      console.log(fetchPlaylistsFromSpotify(retrievedAccessToken));
     } else {
       console.log('no access token in hash')
     }
@@ -39,7 +36,7 @@ function App() {
     // setPlaylists(reply.data.playlists.items);
   }
 
-  async function fetchPlaylistsFromSpotify(token: string) {
+  async function fetchPlaylistsFromSpotifyWithAxios(token: string) {
     const options = { headers: { "Authorization": "Bearer " + token } }
     const reply = await axios.get('https://api.spotify.com/v1/browse/featured-playlists', options);
     console.log("PLAYLISTS: ", { items: reply.data.playlists.items });
@@ -47,6 +44,17 @@ function App() {
     setPlaylists(reply.data.playlists.items);
 
   }
+
+  async function fetchPlaylistsFromSpotifyWithSpotifyLibrary(token: string) {
+    const api = new SpotifyWebApi();
+    api.setAccessToken(token);
+    const result = await api.getFeaturedPlaylists();
+
+    console.log("PLAYLISTS: ", { items: result.playlists.items });
+
+    setPlaylists(result.playlists.items);
+  }
+
   return (
     <div className="App">
       <h1 style={{ fontSize: '6rem' }}>
@@ -66,7 +74,8 @@ function App() {
 
       {accessToken &&
         <>
-          <button className='big' onClick={() => fetchPlaylistsFromSpotify(accessToken)}>View Featured Playlists</button>
+          <button className='big' onClick={() => fetchPlaylistsFromSpotifyWithAxios(accessToken)}>View Featured Playlists</button>
+          <button className='big' onClick={() => fetchPlaylistsFromSpotifyWithSpotifyLibrary(accessToken)}>View Featured Playlists - Use library call</button>
           <button className='big' onClick={() => fetchFollowedArtistsFromSpotify(accessToken)}>View Followed Artists</button>
         </>
       }
@@ -76,7 +85,8 @@ function App() {
       <h3>Featured Playlists</h3>
       {playlists.map((playlist, ix) => (
         <div key={ix}>
-          {playlist.name}
+          {playlist.name} -
+          {playlist.description}
         </div>
       ))}
       <h3>Followed Artists</h3>
